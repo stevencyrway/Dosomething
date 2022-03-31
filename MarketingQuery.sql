@@ -1,6 +1,5 @@
-Select * from quasar_prod_warehouse.public.cio_email_events;
 
-     select
+select
      f.session_id
     ,f.device_id
     ,f.northstar_id
@@ -70,12 +69,12 @@ Select * from quasar_prod_warehouse.public.cio_email_events;
 
       from public.snowplow_sessions psc
       join public.snowplow_raw_events pec on (psc.session_id=pec.session_id and psc.device_id=pec.device_id and pec.event_datetime between psc.landing_datetime and psc.ending_datetime)
-      left join ${web_sessions_members.SQL_TABLE_NAME} sm on (psc.session_id=sm.session_id and psc.device_id=sm.device_id and psc.landing_datetime=sm.landing_datetime)
+      left join looker_scratch.LR$Q6VL21648552726874_web_sessions_members sm on (psc.session_id=sm.session_id and psc.device_id=sm.device_id and psc.landing_datetime=sm.landing_datetime)
       where psc.landing_datetime::date > (
           select max(journey_begin_date) from analyst_sandbox.es_registration_funnel
       )
       and psc.landing_datetime::date <= (
-          select max(landing_datetime) from ${web_sessions_members.SQL_TABLE_NAME}
+          select max(landing_datetime) from looker_scratch.LR$Q6VL21648552726874_web_sessions_members
       )
       and pec.event_datetime between psc.landing_datetime and psc.ending_datetime
 
@@ -93,3 +92,6 @@ Select * from quasar_prod_warehouse.public.cio_email_events;
 
   ) f
 
+    union all
+
+    select * from analyst_sandbox.es_registration_funnel
