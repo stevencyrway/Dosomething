@@ -160,8 +160,15 @@ select * from cio_email_events
 where cio_campaign_name is not null
 
 
-select * from gambit_messages_inbound
+          select dc.device_id, dn.northstar_id, dc.campaign_id, dc.min_view_session_id,
+              dc.min_view_datetime,
+              case when dc.min_view_datetime > s1.min_created_at then 'Existing' else 'New' end as user_new,
+              dc.session_referrer_host, dc.session_utm_source, dc.session_utm_campaign,
+              dc.min_intent_datetime
+          from public.device_campaign dc
+          join public.device_northstar dn on (dc.device_id=dn.device_id)
+          left join signup1 s1 on (dn.northstar_id=s1.northstar_id
 
-select * from gambit_messages_outbound
 
-select * from ft_gambit_conversations_api.conversations
+
+select * from reportbacks

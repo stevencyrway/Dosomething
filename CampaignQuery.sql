@@ -419,4 +419,3 @@ from signups
          left outer join campaign_info on signups.campaign_id = cast(campaign_info.campaign_id as varchar)
          left outer join users on users.northstar_id = signups.northstar_id
          left outer join certificatesdownloaded on cast(posts.action_id as varchar) = certificatesdownloaded.action_id
-
