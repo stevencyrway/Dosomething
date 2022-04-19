@@ -10,6 +10,7 @@ with messaging_funnel as (
            o.template             as content_type,
            --o.text as message_text,
            'sms_outbound_message' as event_type,
+           o.topic                as topic,
            'SMS'                  as Modality
     FROM public.gambit_messages_outbound o
     UNION ALL
@@ -23,6 +24,7 @@ with messaging_funnel as (
            i.template            as content_type,
            --i.text as message_text,
            'sms_inbound_message' as event_type,
+           i.topic               as topic,
            'SMS'                 as Modality
     FROM public.gambit_messages_inbound i
     UNION ALL
@@ -37,10 +39,10 @@ with messaging_funnel as (
            null                            as campaign_id,
            null                            as conversation_id,
            c.interaction_type              AS content_type,
-           --null as message_text,
            CASE
                WHEN c.interaction_type IN ('click', 'uncertain') THEN 'sms_link_click'
                ELSE 'sms_link_preview' END AS event_type,
+           null                            as topic,
            'SMS'                           as Modality
     FROM public.bertly_clicks c
     WHERE c.source = 'sms'
@@ -54,30 +56,29 @@ with messaging_funnel as (
            email_id          as conversation_id,
            cio_campaign_type as content_type,
            event_type,
+           subject           as topic,
            'Email'           as Modality
     from cio_email_events
 )
 
-Select event_id,
-       user_id,
-       messaging_funnel.created_at,
-       macro,
-       broadcast_id,
-       campaign_id,
-       conversation_id,
+Select count(distinct event_id) as EventCount,
+       count(distinct user_id) as UserCount,
+       count(distinct northstar_id)                    as Members,
+       date_trunc('week', messaging_funnel.created_at) as Date,
+       Modality,
        content_type,
        event_type,
-       Modality,
-       northstar_id,
-       last_logged_in,
-       last_accessed,
-       last_messaged_at,
-       email_subscription_topics,
-       voter_registration_status,
-       state,
-       country,
-       language
+       case when date_part('day',(last_logged_in::timestamp - current_date::timestamp)) > 90 then 'Greater than 90 Days'
+           when date_part('day',(last_logged_in::timestamp - current_date::timestamp)) < 90 then 'Less than 90 Days' end as DaysSinceLogin,
+       case when date_part('day',(last_accessed::timestamp - current_date::timestamp)) > 90 then 'Greater than 90 Days'
+           when date_part('day',(last_accessed::timestamp - current_date::timestamp)) < 90 then 'Less than 90 Days' end as DaysSinceAccessedSite,
+       case when date_part('day',(last_messaged_at::timestamp - current_date::timestamp)) > 90 then 'Greater than 90 Days'
+           when date_part('day',(last_messaged_at::timestamp - current_date::timestamp)) < 90 then 'Less than 90 Days' end as DaysSinceMessaged
 from messaging_funnel
          join users on user_id = northstar_id
-where messaging_funnel.created_at >= NOW() - INTERVAL '90 DAY'
-
+where messaging_funnel.created_at >= current_date - INTERVAL '90 DAY'
+group by Date,
+       Modality,
+       content_type,
+       event_type,
+        DaysSinceLogin, DaysSinceAccessedSite, DaysSinceMessaged
