@@ -36,7 +36,7 @@ with messaging_funnel as (
            CASE
                WHEN c.broadcast_id LIKE 'id=%' THEN REGEXP_REPLACE(c.broadcast_id, '^id=', '')
                ELSE c.broadcast_id END     AS broadcast_id,
-           null                            as campaign_id,
+           null                            as campaign,
            null                            as conversation_id,
            c.interaction_type              AS content_type,
            CASE
@@ -52,7 +52,7 @@ with messaging_funnel as (
            timestamp         as created_at,
            null              as macro,
            null              as broadcast_id,
-           cio_campaign_id   as campaign_id,
+           cio_campaign_name  as campaign,
            email_id          as conversation_id,
            cio_campaign_type as content_type,
            event_type,
@@ -62,23 +62,18 @@ with messaging_funnel as (
 )
 
 Select count(distinct event_id) as EventCount,
-       count(distinct user_id) as UserCount,
-       count(distinct northstar_id)                    as Members,
-       date_trunc('week', messaging_funnel.created_at) as Date,
+       date_trunc('day', messaging_funnel.created_at) as Date,
+       users.northstar_id,
        Modality,
        content_type,
        event_type,
-       case when date_part('day',(last_logged_in::timestamp - current_date::timestamp)) > 90 then 'Greater than 90 Days'
-           when date_part('day',(last_logged_in::timestamp - current_date::timestamp)) < 90 then 'Less than 90 Days' end as DaysSinceLogin,
-       case when date_part('day',(last_accessed::timestamp - current_date::timestamp)) > 90 then 'Greater than 90 Days'
-           when date_part('day',(last_accessed::timestamp - current_date::timestamp)) < 90 then 'Less than 90 Days' end as DaysSinceAccessedSite,
-       case when date_part('day',(last_messaged_at::timestamp - current_date::timestamp)) > 90 then 'Greater than 90 Days'
-           when date_part('day',(last_messaged_at::timestamp - current_date::timestamp)) < 90 then 'Less than 90 Days' end as DaysSinceMessaged
+       topic
 from messaging_funnel
-         join users on user_id = northstar_id
+         left outer join users on user_id = northstar_id
 where messaging_funnel.created_at >= current_date - INTERVAL '90 DAY'
 group by Date,
+         users.northstar_id,
        Modality,
        content_type,
        event_type,
-        DaysSinceLogin, DaysSinceAccessedSite, DaysSinceMessaged
+       topic
