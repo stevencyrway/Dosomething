@@ -1,4 +1,26 @@
 
+-- indexes on session_id
+select session_id, device_id, e.northstar_id,
+      min(s.landing_datetime) as landing_datetime,
+      min(e.event_datetime) as authentication_time,
+      min(u.created_at) as user_created_at
+    from public.snowplow_raw_events e
+    join public.snowplow_sessions s using (session_id, device_id)
+    left join users u on (e.northstar_id=u.northstar_id)
+    where s.landing_datetime::date > (
+      select max(landing_datetime) from analyst_sandbox.es_sessions_members
+    )
+    and e.event_datetime between s.landing_datetime and s.ending_datetime
+    and e.northstar_id is not null
+    group by 1,2,3
+
+    union all
+
+    select * from analyst_sandbox.es_sessions_members
+
+
+
+--------
 select
      f.session_id
     ,f.device_id
@@ -69,12 +91,12 @@ select
 
       from public.snowplow_sessions psc
       join public.snowplow_raw_events pec on (psc.session_id=pec.session_id and psc.device_id=pec.device_id and pec.event_datetime between psc.landing_datetime and psc.ending_datetime)
-      left join looker_scratch.LR$Q6VL21648552726874_web_sessions_members sm on (psc.session_id=sm.session_id and psc.device_id=sm.device_id and psc.landing_datetime=sm.landing_datetime)
+      left join analyst_sandbox.es_sessions_members sm on (psc.session_id=sm.session_id and psc.device_id=sm.device_id and psc.landing_datetime=sm.landing_datetime)
       where psc.landing_datetime::date > (
           select max(journey_begin_date) from analyst_sandbox.es_registration_funnel
       )
       and psc.landing_datetime::date <= (
-          select max(landing_datetime) from looker_scratch.LR$Q6VL21648552726874_web_sessions_members
+          select max(landing_datetime) from analyst_sandbox.es_sessions_members
       )
       and pec.event_datetime between psc.landing_datetime and psc.ending_datetime
 

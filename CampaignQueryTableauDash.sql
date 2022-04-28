@@ -79,9 +79,6 @@ Select signups.northstar_id             as signup_northstar_id,
        reportbacks.vr_source            as reportback_vr_source,
        reportbacks.vr_source_details    as reportback_vr_source_details,
        reportbacks.tags                 as reportback_tags,
-       campaign_goals.reportback_goal,
-       campaign_goals.signup_goal,
-       campaign_goals.volunteerhour_goal,
        campaign_info.campaign_id,
        campaign_info.campaign_run_id,
        campaign_info.campaign_name,
@@ -420,25 +417,5 @@ from signups
          left outer join posts on signups.id = posts.signup_id
          left outer join reportbacks on posts.id = reportbacks.post_id
          left outer join campaign_info on signups.campaign_id = cast(campaign_info.campaign_id as varchar)
-         left outer join ft_google_sheets.campaign_goals on campaign_goals.campaign_id = campaign_info.campaign_id
          left outer join users on users.northstar_id = signups.northstar_id
          left outer join certificatesdownloaded on cast(posts.action_id as varchar) = certificatesdownloaded.action_id
-where campaign_created_date >= current_date - INTERVAL '2 YEARS';
-
-
--------
-With certificatesdownloaded (action_id, certificates_downloaded) as (
-    SELECT phoenix_next_events.action_id,
-           COUNT(DISTINCT (phoenix_next_events."event_id")) AS "certificates_downloaded"
-    FROM quasar_prod_warehouse.public.snowplow_raw_events AS phoenix_next_events
-    WHERE phoenix_next_events.event_name = 'phoenix_clicked_download_button_volunteer_credits_table'
-    group by phoenix_next_events.action_id)
-
-Select count(*) from signups
-         left outer join posts on signups.id = posts.signup_id
-         left outer join reportbacks on posts.id = reportbacks.post_id
-         left outer join campaign_info on signups.campaign_id = cast(campaign_info.campaign_id as varchar)
-         left outer join ft_google_sheets.campaign_goals on campaign_goals.campaign_id = campaign_info.campaign_id
-         left outer join users on users.northstar_id = signups.northstar_id
-         left outer join certificatesdownloaded on cast(posts.action_id as varchar) = certificatesdownloaded.action_id
-where campaign_created_date >= current_date - INTERVAL '2 YEARS'
