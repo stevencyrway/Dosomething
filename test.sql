@@ -1,49 +1,3 @@
-create or replace function is_json(str varchar)
-returns boolean language plpgsql as $$
-declare
-    j json;
-begin
-    j:= str;
-    return true;
-exception
-    when others then return false;
-end $$;
-
-SELECT payload::jsonb #>> '{actionId}'      AS action_id,
-       payload::jsonb #>> '{blockId}'       AS block_id,
-       payload::jsonb #>> '{campaignId}'    AS campaign_id,
-       payload::jsonb #>> '{contextSource}' AS context_source,
-       payload::jsonb #>> '{value}'         AS context_value,
-       event_id,
-       payload::jsonb #>> '{name}'          AS event_name,
-       _fivetran_synced                     AS ft_timestamp,
-       payload::jsonb #>> '{groupId}'       AS group_id,
-       payload::jsonb #>> '{modalType}'     AS modal_type,
-       payload::jsonb #>> '{pageId}'        AS page_id,
-       payload::jsonb #>> '{searchQuery}'   AS search_query,
-       payload::jsonb #>> '{utmSource}'     AS utm_source,
-       payload::jsonb #>> '{utmMedium}'     AS utm_medium,
-       payload::jsonb #>> '{utmCampaign}'   AS utm_campaign,
-       payload::jsonb #>> '{url}'           AS url
-FROM ft_snowplow.snowplow_event
-  where is_json(payload) = true;
-
-{{ source('snowplow', 'snowplow_event') }}
-
-Select * FROM ft_snowplow.snowplow_event
-where event_id in ('d0bb5310-258e-466b-bfbc-7e9cb6628026','00653ba0-d327-4f0d-8683-c9f5ff64a575','d8bf040f-006d-4d26-a6c6-a2fca275794c')
-where event_id >= '2022-04-23'
-and is_json(payload) = false
-
-union all
-
-Select count(*) as "True" FROM ft_snowplow.snowplow_event
--- where event_id in ('d0bb5310-258e-466b-bfbc-7e9cb6628026','00653ba0-d327-4f0d-8683-c9f5ff64a575','d8bf040f-006d-4d26-a6c6-a2fca275794c')
-where event_id >= '2022-04-23'
-and is_json(payload) = true;
-
-
-----
 
 --Campaign Activity Data at the Device ID Campaign ID level
       --Summarized
@@ -110,7 +64,20 @@ and is_json(payload) = true;
           group by 1,2,3,4,5,6,7,8,9,10,11)
 
 
-Select * from CampaignJourneyFinal
-left outer join campaign_info on cast(campaign_info.campaign_id as varchar) = CampaignJourneyFinal.campaign_id
-where CampaignJourneyFinal.campaign_id = '9148'
 
+
+-----Badge total, for 2021
+With badgeparsedas (
+Select northstar_id, last_accessed, last_messaged_at, last_logged_in, replace(cast(json_array_elements(badges) as varchar),'"','') as badges from users
+where badges is not null);
+
+
+
+Select replace(cast(json_array_elements(badges) as varchar),'"','') as badges from users
+group by replace(cast(json_array_elements(badges) as varchar),'"','');
+
+Select badges from users
+
+
+Select campaign_name, unnest(string_to_array(campaign_cause,',')) as campaign_paul from campaign_info
+group by campaign_name, unnest(string_to_array(campaign_cause,','))

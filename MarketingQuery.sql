@@ -117,3 +117,4 @@ select
     union all
 
     select * from analyst_sandbox.es_registration_funnel
+
