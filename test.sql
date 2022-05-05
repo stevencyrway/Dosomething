@@ -80,4 +80,32 @@ Select badges from users
 
 
 Select campaign_name, unnest(string_to_array(campaign_cause,',')) as campaign_paul from campaign_info
-group by campaign_name, unnest(string_to_array(campaign_cause,','))
+group by campaign_name, unnest(string_to_array(campaign_cause,','));
+
+with parsedtags as (
+Select id, replace(cast(json_array_elements(tags) as varchar),'"','') as tags from posts)
+
+
+
+Select id,
+       case when tags = 'Bulk' then 1 else 0 end as Bulk,
+case when tags = 'Good For Brand' then 1 else 0 end as GoodForBrand,
+case when tags = 'Good For Sponsor' then 1 else 0 end as GoodforSponsor,
+case when tags = 'Good For Storytelling' then 1 else 0 end as GoodforStorytelling,
+case when tags = 'Good Quote' then 1 else 0 end as GoodQuote,
+case when tags = 'Good Submission' then 1 else 0 end as GoodSubmission,
+case when tags = 'Group Photo' then 1 else 0 end as GroupPhoto,
+case when tags = 'Hide In Gallery' then 1 else 0 end as HideInGallery,
+case when tags = 'Inappropriate' then 1 else 0 end as Inappropriate,
+case when tags = 'Incomplete Action' then 1 else 0 end as IncompleteAction,
+case when tags = 'Irrelevant' then 1 else 0 end as Irrelevant,
+case when tags = 'Social' then 1 else 0 end as Social,
+case when tags = 'Test' then 1 else 0 end as Test,
+case when tags = 'Unrealistic Hours' then 1 else 0 end as UnrealisticHours,
+case when tags = 'Unrealistic Quantity' then 1 else 0 end as UnrealisticQuantity
+from parsedtags
+group by id, tags;
+
+
+select * from gambit_messages_outbound
+where conversation_id = '5a07282e476662000489b55b'
