@@ -449,10 +449,10 @@ With Members as (SELECT users.northstar_id,
                                               then 1 END                          AS count_active_subscribed,
                                       CASE
                                           WHEN (date_part('day', now() - user_activity.most_recent_mam_action)) <= 120
-                                              THEN user_activity.northstar_id END AS count_mel_past_120,
+                                              THEN 1 END AS count_mel_past_120,
                                       case
                                           when date_part('day', now() - (DATE(user_activity.most_recent_rb))) <= 120
-                                              then user_activity.northstar_id end AS count_impact_past_120,
+                                              then 1 end AS count_impact_past_120,
                                       case
                                           -- unsub scenarios
                                           when (user_unsubscribed_at is not null)
@@ -542,9 +542,9 @@ Select state,
        sum(total_badges)                                                 as "Total Badges",
        count(distinct northstar_id)                                      as "Member Count",
        sum(count_subscribed)                                             as "Subscribed Members",
-       sum(cast(count_active_subscribed as integer))                                      as "Active Addressable Members",
-       sum(cast(count_mel_past_120 as integer))                                           as "Members Engaging (Last 120 days",
-       sum(cast(count_impact_past_120 as integer))                                        as "Members Making Impact (Last 120 day)"
+       sum(count_active_subscribed)                                      as "Active Addressable Members",
+       sum(count_mel_past_120)                                           as "Members Engaging (Last 120 days",
+       sum(count_impact_past_120)                                        as "Members Making Impact (Last 120 day)"
 from Memberswithqualifiersandchurn
 Group by state, country, language, ds_campaign, acquisitionchannel, acquisitionmotivation, tenuregroup, AgeGroup,
          GenerationGroup, agegroupataccountcreation, messagingstatus, memberaddressablestatus,
