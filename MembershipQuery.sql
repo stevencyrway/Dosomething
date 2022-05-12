@@ -287,7 +287,7 @@ With Members as (SELECT users.northstar_id,
                             when lower(trim(users.state)) = 'washington' then 'WA'
                             when lower(trim(users.state)) = 'pennsylvania' then 'PA'
                             when lower(trim(users.state)) = 'alaska' then 'AK'
-                            else lower(trim(users.state)) end        as State,
+                            else lower(trim(users.state)) end                          as State,
                         zipcode,
                         country,
                         language,
@@ -317,7 +317,7 @@ With Members as (SELECT users.northstar_id,
                             when lower(source) = 'importer-client' and source_detail is null then 'rock-the-vote'
                             when lower(source) = 'importer-client' and lower(source_detail) like '%opt_in%'
                                 then 'email_signup'
-                            else 'no attributable DS campaign' end   as DS_campaign,
+                            else 'no attributable DS campaign' end                     as DS_campaign,
                         -- Acquisition Channel
                         case
                             when utm_medium = 'referral' and utm_source like 'scholarship_fea%'
@@ -331,7 +331,7 @@ With Members as (SELECT users.northstar_id,
                             when utm_medium in ('sms', 'email') then 'email-or-sms'
                             when utm_medium is null and referrer_user_id is not null then 'referral-friend'
                             else 'no assigned attribution'
-                            end                                      as AcquisitionChannel,
+                            end                                                        as AcquisitionChannel,
                         --Acquisition Motivation
                         case
                             when source = 'importer-client' and source_detail = 'rock-the-vote' then 'voter-reg'
@@ -339,9 +339,9 @@ With Members as (SELECT users.northstar_id,
                             when utm_source ilike 'scholarship_%' then 'scholarship'
                             when utm_medium ilike 'scholarship_%' then 'scholarship'
                             when utm_campaign ilike '%vcredit%' then 'volunteer-credit'
-                            else 'core' end                          as AcquisitionMotivation,
+                            else 'core' end                                            as AcquisitionMotivation,
                         (extract(year from age(now(), created_at)) * 12) +
-                        (extract(month from age(now(), created_at))) as Tenure,
+                        (extract(month from age(now(), created_at)))                   as TenureinMonths,
                         case
                             when (extract(year from age(now(), created_at)) * 12) +
                                  (extract(month from age(now(), created_at))) < 4 then 'a 0-3 mo'
@@ -355,18 +355,26 @@ With Members as (SELECT users.northstar_id,
                                  (extract(month from age(now(), created_at))) < 19 then 'e 13-18 mo'
                             when (extract(year from age(now(), created_at)) * 12) +
                                  (extract(month from age(now(), created_at))) < 25 then 'f 19-24 mo'
-                            else 'g 24+ mo' end                      as TenureGroup,
-                        CASE
-                            WHEN DATE_PART('year', birthdate) < 2010 AND DATE_PART('year', birthdate) > 1971
-                                then (DATE_PART('year', created_at) - DATE_PART('year', birthdate))
-                            else null end                            as AgeAtAccountCreation
-                         ,
+                            else 'g 24+ mo' end                                        as TenureGroup,
+                        (DATE_PART('year', created_at) - DATE_PART('year', birthdate)) as AgeAtAccountCreation,
+                        (DATE_PART('year', now()) - DATE_PART('year', birthdate))      as Age,
+                        case
+                            when DATE_PART('year', birthdate) <= '1945' then 'Traditionalists/ Silent'
+                            when DATE_PART('year', birthdate) >= '1946' and DATE_PART('year', birthdate) <= '1964'
+                                then 'Baby Boomers'
+                            when DATE_PART('year', birthdate) >= '1965' and DATE_PART('year', birthdate) <= '1976'
+                                then 'Gen X'
+                            when DATE_PART('year', birthdate) >= '1977' and DATE_PART('year', birthdate) <= '1995'
+                                then 'Millenials'
+                            when DATE_PART('year', birthdate) >= '1996' and DATE_PART('year', birthdate) <= '2015'
+                                then 'Gen Z'
+                            else 'Likely Made up Age or blank' end                     as GenerationGroup,
                         case
                             when sms_status in ('active', 'less', 'pending') and
                                  users.cio_status in ('customer_subscribed') then 'email & sms'
                             when users.cio_status in ('customer_subscribed') then 'email only'
                             when sms_status in ('active', 'less', 'pending') then 'sms only'
-                            else 'none' end                          as MemberAddressableStatus
+                            else 'none' end                                            as MemberAddressableStatus
                  from public.users
                           left join campaign_info ON substring(users.source_detail from '(?<=contentful_id\:)(\w*)') =
                                                      campaign_info.contentful_id),
@@ -378,17 +386,18 @@ With Members as (SELECT users.northstar_id,
                                       DS_campaign,
                                       AcquisitionChannel,
                                       AcquisitionMotivation,
-                                      Tenure,
+                                      TenureinMonths,
                                       TenureGroup,
                                       AgeAtAccountCreation,
-                                      badges,
-                                      total_badges                                as TotalBadges,
-                                      members.northstar_id                        as MemberCount,
+                                      total_badges,
+                                      members.northstar_id,
                                       user_unsubscribed_at,
                                       members.created_at,
                                       most_recent_mam_action,
                                       most_recent_email_open,
                                       memberaddressablestatus,
+                                      Age,
+                                      GenerationGroup,
                                       CASE
                                           WHEN (case
                                                     when user_activity.sms_status in ('active', 'less', 'pending') and
@@ -485,6 +494,21 @@ With Members as (SELECT users.northstar_id,
                                                   ON members.northstar_id = user_activity.northstar_id),
 --- to add in churn qualifications and case statements
      Memberswithqualifiersandchurn as (Select *
+                                            , Case
+                                                  when Age >= 0 and Age <= 14 then 'Children 0-14'
+                                                  when Age >= 15 and Age <= 24 then 'Youth 15-24'
+                                                  when Age >= 25 and Age <= 64 then 'Adults 25-64'
+                                                  when Age >= 65 then 'Seniors 65+'
+                                                  else 'Likely Made Up age' end     as AgeGroup
+                                            , Case
+                                                  when Ageataccountcreation >= 0 and Ageataccountcreation <= 14
+                                                      then 'Children 0-14'
+                                                  when Ageataccountcreation >= 15 and Ageataccountcreation <= 24
+                                                      then 'Youth 15-24'
+                                                  when Ageataccountcreation >= 25 and Ageataccountcreation <= 64
+                                                      then 'Adults 25-64'
+                                                  when Ageataccountcreation >= 65 then 'Seniors 65+'
+                                                  else 'Likely Made Up Age' end     as AgeGroupatAccountCreation
                                             , Date_trunc('Week', CASE
              -- UNSUB OR UNDEL (NO EMAIL OR SMS)
                                                                      WHEN messagingstatus IN ('not subscribed')
@@ -499,31 +523,31 @@ With Members as (SELECT users.northstar_id,
 
                                        from MemberswithQualifiers)
 
+
 Select state,
        country,
        language,
        ds_campaign,
        acquisitionchannel,
        acquisitionmotivation,
-       tenure,
        tenuregroup,
-       ageataccountcreation,
-       badges,
-       totalbadges,
-       membercount,
-       user_unsubscribed_at,
-       created_at,
-       most_recent_mam_action,
-       most_recent_email_open,
-       memberaddressablestatus,
-       count_subscribed,
-       count_active_subscribed,
-       count_mel_past_120,
-       count_impact_past_120,
+       AgeGroup,
+       GenerationGroup,
+       agegroupataccountcreation,
        messagingstatus,
-       churndate
+       memberaddressablestatus,
+       Case when churndate is null then 'Not Churned' else 'Churned' end as ChurnedFlag,
+       date_trunc('week', churndate)                                     as ChurnDateWeek,
+       avg(tenureinMonths),
+       sum(total_badges)                                                 as "Total Badges",
+       count(distinct northstar_id)                                      as "Member Count",
+       sum(count_subscribed)                                             as "Subscribed Members",
+       sum(cast(count_active_subscribed as integer))                                      as "Active Addressable Members",
+       sum(cast(count_mel_past_120 as integer))                                           as "Members Engaging (Last 120 days",
+       sum(cast(count_impact_past_120 as integer))                                        as "Members Making Impact (Last 120 day)"
 from Memberswithqualifiersandchurn
+Group by state, country, language, ds_campaign, acquisitionchannel, acquisitionmotivation, tenuregroup, AgeGroup,
+         GenerationGroup, agegroupataccountcreation, messagingstatus, memberaddressablestatus,
+         Case when churndate is null then 'Not Churned' else 'Churned' end, date_trunc('week', churndate)
 
 
-
-       
