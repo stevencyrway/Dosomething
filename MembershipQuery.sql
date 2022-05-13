@@ -527,6 +527,7 @@ With Members as (SELECT users.northstar_id,
 Select state,
        country,
        language,
+       date_trunc('week',created_at),
        ds_campaign,
        acquisitionchannel,
        acquisitionmotivation,
@@ -537,6 +538,7 @@ Select state,
        messagingstatus,
        memberaddressablestatus,
        Case when churndate is null then 'Not Churned' else 'Churned' end as ChurnedFlag,
+       date_trunc('week',created_at)                                     as CreatedDateWeek,
        date_trunc('week', churndate)                                     as ChurnDateWeek,
        avg(tenureinMonths),
        sum(total_badges)                                                 as "Total Badges",
@@ -548,6 +550,6 @@ Select state,
 from Memberswithqualifiersandchurn
 Group by state, country, language, ds_campaign, acquisitionchannel, acquisitionmotivation, tenuregroup, AgeGroup,
          GenerationGroup, agegroupataccountcreation, messagingstatus, memberaddressablestatus,
-         Case when churndate is null then 'Not Churned' else 'Churned' end, date_trunc('week', churndate)
+         Case when churndate is null then 'Not Churned' else 'Churned' end, date_trunc('week',created_at), date_trunc('week', churndate)
 
 
