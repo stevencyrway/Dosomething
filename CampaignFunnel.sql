@@ -61,7 +61,6 @@
           from campaign_journey
 --           where (session_utm_source is null or session_utm_source<>'Snapchat')
           where min_view_datetime>=(CURRENT_DATE - INTERVAL '90 days')
-          group by 1,2,3,4,5,6,7,8,9,10,11 ;;
+          group by 1,2,3,4,5,6,7,8,9,10,11 ;
 
 
-Select * from google_analytics.ga_traffic
