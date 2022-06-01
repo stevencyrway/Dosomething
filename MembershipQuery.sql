@@ -14,9 +14,48 @@ With Members as (SELECT users.northstar_id,
                         first_name,
                         last_name,
                         voter_registration_status,
-                        address_street_1,
-                        address_street_2,
-                        city,
+                               case
+                            when source = 'importer-client' and source_detail = 'rock-the-vote' then 'voter-reg'
+                            when source = 'importer-client' and source_detail is null then 'voter-reg'
+                            when utm_source ilike 'scholarship_%' then 'scholarship'
+                            when utm_medium ilike 'scholarship_%' then 'scholarship'
+                            when utm_campaign ilike '%vcredit%' then 'volunteer-credit'
+                            else 'core' end                                            as AcquisitionMotivation,
+                        (extract(year from age(now(), users.created_at)) * 12) +
+                        (extract(month from age(now(), users.created_at)))                   as TenureinMonths,
+                        case
+                            when (extract(year from age(now(), users.created_at)) * 12) +
+                                 (extract(month from age(now(), users.created_at))) < 4 then 'a 0-3 mo'
+                            when (extract(year from age(now(), users.created_at)) * 12) +
+                                 (extract(month from age(now(), users.created_at))) < 7 then 'b 4-6 mo'
+                            when (extract(year from age(now(), users.created_at)) * 12) +
+                                 (extract(month from age(now(), users.created_at))) < 10 then 'c 7-9 mo'
+                            when (extract(year from age(now(), users.created_at)) * 12) +
+                                 (extract(month from age(now(), users.created_at))) < 13 then 'd 10-12 mo'
+                            when (extract(year from age(now(), users.created_at)) * 12) +
+                                 (extract(month from age(now(), users.created_at))) < 19 then 'e 13-18 mo'
+                            when (extract(year from age(now(), users.created_at)) * 12) +
+                                 (extract(month from age(now(), users.created_at))) < 25 then 'f 19-24 mo'
+                            else 'g 24+ mo' end                                        as TenureGroup,
+                        (DATE_PART('year', users.created_at) - DATE_PART('year', birthdate)) as AgeAtAccountCreation,
+                        (DATE_PART('year', now()) - DATE_PART('year', birthdate))      as Age,
+                        case
+                            when DATE_PART('year', birthdate) <= '1945' then 'Traditionalists/ Silent'
+                            when DATE_PART('year', birthdate) >= '1946' and DATE_PART('year', birthdate) <= '1964'
+                                then 'Baby Boomers'
+                            when DATE_PART('year', birthdate) >= '1965' and DATE_PART('year', birthdate) <= '1976'
+                                then 'Gen X'
+                            when DATE_PART('year', birthdate) >= '1977' and DATE_PART('year', birthdate) <= '1995'
+                                then 'Millenials'
+                            when DATE_PART('year', birthdate) >= '1996' and DATE_PART('year', birthdate) <= '2015'
+                                then 'Gen Z'
+                            else 'Likely Made up Age or blank' end                     as GenerationGroup,
+                        case
+                            when sms_status in ('active', 'less', 'pending') and
+                                 users.cio_status in ('customer_subscribed') then 'email & sms'
+                            when users.cio_status in ('customer_subscribed') then 'email only'
+                            when sms_status in ('active', 'less', 'pending') then 'sms only'
+                            else 'none' end                                            as MemberAddressableStatus
                         case
                             when lower(trim(users.state)) = 'al - alabama' then 'AL'
                             when lower(trim(users.state)) = 'alabama' then 'AL'

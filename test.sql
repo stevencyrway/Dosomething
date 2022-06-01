@@ -265,7 +265,3 @@ from signups
          left outer join users on users.northstar_id = signups.northstar_id
          left outer join certificatesdownloaded on cast(posts.action_id as varchar) = certificatesdownloaded.action_id
 where campaign_created_date >= current_date - INTERVAL '2 YEARS';
-
-
-Select * from rock_the_vote
-where started_registration >= '2022-05-01'

@@ -1,4 +1,4 @@
------ The general campaign query used for All Campaigns and campaign history, this is at the signup level
+----- The general campaign query used for All Campaigns and campaign history,
 ----- some fields from joins have been reduced due to non use.
 
 -- Only for specific campaigns that used certificates
