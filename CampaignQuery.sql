@@ -12,10 +12,26 @@ With certificatesdownloaded (action_id, certificates_downloaded) as (
      parsedtags as (
          Select id, replace(cast(json_array_elements(tags) as varchar), '"', '') as tags from posts),
      ---to make sense of the causes that are comma seperated and make them flaggable in tableau
-     parsedcauses as (
-         Select northstar_id, unnest(string_to_array(causes, ',')) as cause
-         from users
-         group by northstar_id, unnest(string_to_array(causes, ',')))
+    parsedcauses as (
+    Select northstar_id, unnest(string_to_array(causes, ',')) as cause
+    from users
+    group by northstar_id, unnest(string_to_array(causes, ','))
+),
+    parsedcauses2 as (Select northstar_id,
+       count(distinct northstar_id) as UserCount,
+       SUM(case when cause = 'animal_welfare' then 1 else 0 end) AnimalWelfare,
+       SUM(case when cause = 'bullying' then 1 else 0 end) Bullying,
+       SUM(case when cause = 'environment' then 1 else 0 end) Environment,
+       SUM(case when cause = 'gender_rights_equality' then 1 else 0 end) gender_rights_equality,
+       SUM(case when cause = 'homelessness_poverty' then 1 else 0 end) homelessness_poverty,
+       SUM(case when cause = 'immigration_refugees' then 1 else 0 end)immigration_refugees,
+       SUM(case when cause = 'lgbtq_rights_equality' then 1 else 0 end) lgbtq_rights_equality,
+       SUM(case when cause = 'mental_health' then 1 else 0 end) mental_health,
+       SUM(case when cause = 'physical_health' then 1 else 0 end) physical_health,
+       SUM(case when cause = 'racial_justice_equity' then 1 else 0 end) racial_justice_equity,
+       SUM(case when cause = 'sexual_harassment_assault' then 1 else 0 end) sexual_harassment_assault
+from parsedcauses
+group by northstar_id)
 
 Select signups.northstar_id                                                  as     signup_northstar_id,
        signups.id                                                            as     signup_id,
@@ -403,17 +419,17 @@ Select signups.northstar_id                                                  as 
        users.zipcode                                                         as     user_zipcode,
        users.country                                                         as     user_country,
        users.language                                                        as     user_language,
-       case when parsedcauses.cause = 'animal_welfare' then 1 else 0 end            AnimalWelfare,
-       case when parsedcauses.cause = 'bullying' then 1 else 0 end                  Bullying,
-       case when parsedcauses.cause = 'environment' then 1 else 0 end               Environment,
-       case when parsedcauses.cause = 'gender_rights_equality' then 1 else 0 end    gender_rights_equality,
-       case when parsedcauses.cause = 'homelessness_poverty' then 1 else 0 end      Ehomelessness_poverty,
-       case when parsedcauses.cause = 'immigration_refugees' then 1 else 0 end      immigration_refugees,
-       case when parsedcauses.cause = 'lgbtq_rights_equality' then 1 else 0 end     lgbtq_rights_equality,
-       case when parsedcauses.cause = 'mental_health' then 1 else 0 end             mental_health,
-       case when parsedcauses.cause = 'physical_health' then 1 else 0 end           physical_health,
-       case when parsedcauses.cause = 'racial_justice_equity' then 1 else 0 end     racial_justice_equity,
-       case when parsedcauses.cause = 'sexual_harassment_assault' then 1 else 0 end sexual_harassment_assault,
+       AnimalWelfare,
+       Bullying,
+       Environment,
+       gender_rights_equality,
+       homelessness_poverty,
+       immigration_refugees,
+       lgbtq_rights_equality,
+       mental_health,
+       physical_health,
+       racial_justice_equity,
+       sexual_harassment_assault,
        users.referrer_user_id,
        certificatesdownloaded.action_id,
        certificatesdownloaded.certificates_downloaded
@@ -425,7 +441,15 @@ from signups
          left outer join users on users.northstar_id = signups.northstar_id
          left outer join certificatesdownloaded on cast(posts.action_id as varchar) = certificatesdownloaded.action_id
          left outer join parsedtags on parsedtags.id = posts.id
-         left outer join parsedcauses on parsedcauses.northstar_id = users.northstar_id
+         left outer join parsedcauses2 on parsedcauses2.northstar_id = users.northstar_id
 where campaign_created_date >= current_date - INTERVAL '2 YEARS';
 
+
+Select campaign_name, signups.campaign_id, count(distinct id), date_trunc('year',signups.created_at) from signups
+         left outer join campaign_info on signups.campaign_id = cast(campaign_info.campaign_id as varchar)
+where campaign_info.campaign_id = 2427
+group by campaign_name, signups.campaign_id, date_trunc('year',signups.created_at)
+
+
+Select campaign_id, campaign_name, campaign_run_start_date, campaign_created_date from campaign_info
 

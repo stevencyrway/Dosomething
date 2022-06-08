@@ -68,20 +68,32 @@ with results as (
     Select northstar_id, unnest(string_to_array(causes, ',')) as cause
     from users
     group by northstar_id, unnest(string_to_array(causes, ','))
-)
+),
 
-Select northstar_id,
-       count(distinct northstar_id) as UserCount,
-       SUM(case when cause = 'animal_welfare' then 1 else 0 end) AnimalWelfare,
-       SUM(case when cause = 'bullying' then 1 else 0 end) Bullying,
-       SUM(case when cause = 'environment' then 1 else 0 end) Environment,
-       SUM(case when cause = 'gender_rights_equality' then 1 else 0 end) gender_rights_equality,
-       SUM(case when cause = 'homelessness_poverty' then 1 else 0 end) Ehomelessness_poverty,
-       SUM(case when cause = 'immigration_refugees' then 1 else 0 end)immigration_refugees,
-       SUM(case when cause = 'lgbtq_rights_equality' then 1 else 0 end) lgbtq_rights_equality,
-       SUM(case when cause = 'mental_health' then 1 else 0 end) mental_health,
-       SUM(case when cause = 'physical_health' then 1 else 0 end) physical_health,
-       SUM(case when cause = 'racial_justice_equity' then 1 else 0 end) racial_justice_equity,
-       SUM(case when cause = 'sexual_harassment_assault' then 1 else 0 end) sexual_harassment_assault
-from results
-group by northstar_id
+     results2 as (Select northstar_id,
+                         count(distinct northstar_id) as                                      UserCount,
+                         SUM(case when cause = 'animal_welfare' then 1 else 0 end)            AnimalWelfare,
+                         SUM(case when cause = 'bullying' then 1 else 0 end)                  Bullying,
+                         SUM(case when cause = 'environment' then 1 else 0 end)               Environment,
+                         SUM(case when cause = 'gender_rights_equality' then 1 else 0 end)    gender_rights_equality,
+                         SUM(case when cause = 'homelessness_poverty' then 1 else 0 end)      Ehomelessness_poverty,
+                         SUM(case when cause = 'immigration_refugees' then 1 else 0 end)      immigration_refugees,
+                         SUM(case when cause = 'lgbtq_rights_equality' then 1 else 0 end)     lgbtq_rights_equality,
+                         SUM(case when cause = 'mental_health' then 1 else 0 end)             mental_health,
+                         SUM(case when cause = 'physical_health' then 1 else 0 end)           physical_health,
+                         SUM(case when cause = 'racial_justice_equity' then 1 else 0 end)     racial_justice_equity,
+                         SUM(case when cause = 'sexual_harassment_assault' then 1 else 0 end) sexual_harassment_assault
+                  from results
+                  group by northstar_id)
+
+Select *
+from results;
+
+
+
+Select count(distinct device_campaign.device_id) as distinctdevices,
+       count(distinct dn.device_id)              as distinctdevicemembers,
+       count(distinct u.northstar_id)            as distinctusers
+from device_campaign
+         left outer join device_northstar dn on device_campaign.device_id = dn.device_id
+         left outer join users u on dn.northstar_id = u.northstar_id
