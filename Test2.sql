@@ -96,4 +96,23 @@ Select count(distinct device_campaign.device_id) as distinctdevices,
        count(distinct u.northstar_id)            as distinctusers
 from device_campaign
          left outer join device_northstar dn on device_campaign.device_id = dn.device_id
-         left outer join users u on dn.northstar_id = u.northstar_id
+         left outer join users u on dn.northstar_id = u.northstar_id;
+
+
+Select * from campaign_info
+where campaign_created_date >= '2022=06-01';
+
+
+Select * from rock_the_vote
+where started_registration >= '2021-01-01';
+
+
+Select * from snowplow_base_event
+where se_label = 'voter_registration_status'
+
+
+select * from instagram_business.media_history mh
+         join instagram_business.media_insights mi on mh.id = mi.id
+
+
+Select * from twitter.tweet
