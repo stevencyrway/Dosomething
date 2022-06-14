@@ -1,118 +1,134 @@
--- Select action,
---        action_id,
---        campaign_id,
---        club_id,
---        created_at,
---        group_id,
---        id,
---        is_accepted,
---        is_anonymous,
---        is_civic_action,
---        is_online,
---        is_quiz,
---        is_reportback,
---        is_scholarship_entry,
---        time_commitment,
---        is_volunteer_credit,
---        location,
---        northstar_id,
---        noun,
---        num_participants,
---        postal_code,
---        post_class,
---        quantity,
---        referrer_user_id,
---        reportback_volume,
---        school_id,
---        source_bucket,
---        signup_id,
---        source,
---        status,
---        text,
---        type,
---        hours_spent,
---        url,
---        verb,
---        vr_source,
---        vr_source_details,
---        tags
--- from posts
--- where campaign_id in ('6716', '6691', '6690', '6460','7713');
---
--- select campaign_info.campaign_name, signups.campaign_id, why_participated from signups
--- left outer join campaign_info on signups.campaign_id = cast(campaign_info.campaign_id as varchar)
--- where signups.campaign_id in ('6716', '6691', '6690', '6460','7713')
--- and why_participated is not null;
---
---
--- Select *
--- from campaign_info
--- where campaign_id in ('6716', '6691', '6690', '6460','7713');
---
--- select id, northstar_id, text from posts where created_at >= '2022-03-01' and text is not null
---
--- ---query for nltk sentiment analysis posts
--- Select posts.campaign_id, text from posts
---          left outer join campaign_info on posts.campaign_id = cast(campaign_info.campaign_id as varchar)
--- where created_at >= '2022-03-01' and text is not null
--- group by posts.campaign_id, text;
---
--- --query for nltk sentiment analysis signups
--- Select signups.campaign_id, why_participated from signups
---          left outer join campaign_info on signups.campaign_id = cast(campaign_info.campaign_id as varchar)
--- where created_at >= '2022-03-01' and why_participated is not null
--- group by signups.campaign_id, why_participated;
-
 ---To break out the comma separated causes
-with results as (
-    Select northstar_id, unnest(string_to_array(causes, ',')) as cause
-    from users
-    group by northstar_id, unnest(string_to_array(causes, ','))
-),
+---To break out the comma separated causes
+with CausesUnnested as (Select campaign_name,
+                               campaign_id,
+                               campaign_created_date,
+                               unnest(string_to_array(campaign_cause, ',')) as cause
+                        from campaign_info
+                        group by campaign_name, campaign_id, campaign_created_date, cause),
+     CU2 as (Select campaign_name,
+                    campaign_id,
+                    campaign_created_date,
+                    sum(count(cause))
+                    over (partition by campaign_name order by cause asc rows between unbounded preceding and current row) as CauseCumSum,
+                    cause
+             from CausesUnnested
+             group by campaign_name, campaign_id, campaign_created_date, cause),
+     CampaignsAgg as (Select signups.campaign_id,
+                             date_trunc('week', signups.created_at)                 as SignupWeek,
+                             posts.location,
+                             lower(posts.noun)                                      as noun,
+                             lower(posts.verb)                                      as verb,
+                             posts.post_class,
+                             posts.status,
+                             lower(posts.type)                                      as type,
+                             count(distinct signups.northstar_id)                   as Particpants,
+                             count(distinct signups.id)                             as Signups,
+                             count(distinct reportbacks.post_id)                    as Reportbacks,
+                             count(distinct signups.campaign_id)                    as Campaigns,
+                             max(posts.created_at::DATE - signups.created_at::DATE) as DaystoPost,
+                             count(distinct posts.id)                               as Posts,
+                             sum(posts.hours_spent)                                 as VolunteerHours,
+                             SUM(CASE
+                                     WHEN posts.quantity > 10000 THEN 1
+                                     WHEN posts.quantity IS NULL THEN 1
+                                     ELSE posts.quantity END)                       AS Impact
+                      from signups
+                               left outer join posts on signups.id = posts.signup_id
+                               left outer join reportbacks on posts.id = reportbacks.post_id
+                      group by signups.campaign_id, date_trunc('week', signups.created_at), posts.location,
+                               lower(posts.noun), lower(posts.verb),
+                               posts.post_class, posts.status, lower(posts.type))
 
-     results2 as (Select northstar_id,
-                         count(distinct northstar_id) as                                      UserCount,
-                         SUM(case when cause = 'animal_welfare' then 1 else 0 end)            AnimalWelfare,
-                         SUM(case when cause = 'bullying' then 1 else 0 end)                  Bullying,
-                         SUM(case when cause = 'environment' then 1 else 0 end)               Environment,
-                         SUM(case when cause = 'gender_rights_equality' then 1 else 0 end)    gender_rights_equality,
-                         SUM(case when cause = 'homelessness_poverty' then 1 else 0 end)      Ehomelessness_poverty,
-                         SUM(case when cause = 'immigration_refugees' then 1 else 0 end)      immigration_refugees,
-                         SUM(case when cause = 'lgbtq_rights_equality' then 1 else 0 end)     lgbtq_rights_equality,
-                         SUM(case when cause = 'mental_health' then 1 else 0 end)             mental_health,
-                         SUM(case when cause = 'physical_health' then 1 else 0 end)           physical_health,
-                         SUM(case when cause = 'racial_justice_equity' then 1 else 0 end)     racial_justice_equity,
-                         SUM(case when cause = 'sexual_harassment_assault' then 1 else 0 end) sexual_harassment_assault
-                  from results
-                  group by northstar_id)
+Select CampaignsAgg.campaign_id,
+       SignupWeek,
+       location,
+       noun,
+       verb,
+       post_class,
+       status,
+       type,
+       Particpants,
+       Signups,
+       Reportbacks,
+       Campaigns,
+       DaystoPost,
+       Posts,
+       VolunteerHours,
+       Impact,
+       campaign_name,
+       campaign_created_date,
+       cause
+from CampaignsAgg
+         join CU2 on CampaignsAgg.campaign_id = cast(CU2.campaign_id as varchar)
+where CampaignsAgg.campaign_id = '9133'
 
-Select *
-from results;
+---User Activity Query
+Select northstar_id,
+       created_at,
+       sms_status,
+       email_status,
+       num_signups,
+       most_recent_signup,
+       num_rbs,
+       total_quantity,
+       most_recent_rb,
+       first_rb,
+       extract(DAY from avg_time_betw_rbs) as DaysbetweenRB,
+       avg_days_next_action_after_rb,
+       days_to_next_action_after_last_rb,
+       most_recent_mam_action,
+       most_recent_email_open,
+       most_recent_all_actions,
+       last_action_is_rb,
+       days_since_last_action,
+       extract(DAY from time_to_first_rb)  as DaystoFirstRB,
+       sms_unsubscribed_at,
+       sms_undeliverable_at,
+       email_unsubscribed_at,
+       user_unsubscribed_at,
+       voter_reg_acquisition
+from user_activity
 
-
-
-Select count(distinct device_campaign.device_id) as distinctdevices,
-       count(distinct dn.device_id)              as distinctdevicemembers,
-       count(distinct u.northstar_id)            as distinctusers
-from device_campaign
-         left outer join device_northstar dn on device_campaign.device_id = dn.device_id
-         left outer join users u on dn.northstar_id = u.northstar_id;
-
-
-Select * from campaign_info
-where campaign_created_date >= '2022=06-01';
-
-
-Select * from rock_the_vote
-where started_registration >= '2021-01-01';
-
-
-Select * from snowplow_base_event
-where se_label = 'voter_registration_status'
-
-
-select * from instagram_business.media_history mh
-         join instagram_business.media_insights mi on mh.id = mi.id
-
-
-Select * from twitter.tweet
+--voter reg Looker query
+WITH signups AS (select s.northstar_id,
+                        s.id,
+                        s.club_id,
+                        s.campaign_id,
+                        s.campaign_run_id,
+                        s.why_participated,
+                        s.source,
+                        s.source_bucket,
+                        s.source_details,
+                        s.created_at,
+                        s.utm_source,
+                        s.utm_medium,
+                        s.utm_campaign,
+                        s.referrer_user_id,
+                        s.group_id,
+                        p1.ignore,
+                        s.details
+                        --,
+                        --r.post_created_at post_date,
+                        --date_part('day', r.post_created_at - s.created_at) as num_days_rb
+                 from public.signups s
+                          left join (select distinct northstar_id, campaign_id, 1 as ignore
+                                     from public.posts
+                                     where signup_id = -1) p1
+                                    on s.northstar_id = p1.northstar_id and s.campaign_id = p1.campaign_id
+    --left join public.reportbacks r on s.id = r.signup_id
+)
+SELECT COALESCE(SUM((case
+                         when "reportbacks"."post_type" = 'voter-reg'
+                             THEN "reportbacks"."reportback_volume"
+                         ELSE NULL END)), 0) AS "reportbacks.total_voter_registrations_rbs"
+FROM "signups" AS "signups"
+         LEFT JOIN "public"."posts" AS "posts"
+                   ON "signups"."id" = "posts"."signup_id"
+         LEFT JOIN "public"."reportbacks" AS "reportbacks" ON "posts"."id" = "reportbacks"."post_id"
+WHERE ((((("reportbacks"."post_created_at")) >= (TIMESTAMP '2020-01-01')
+    AND
+         (("reportbacks"."post_created_at"))
+             < (TIMESTAMP '2020-12-31'))))
+  AND "reportbacks"."vr_source" = 'email'
+    FETCH NEXT 500 ROWS ONLY

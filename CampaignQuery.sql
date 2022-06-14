@@ -444,12 +444,3 @@ from signups
          left outer join parsedcauses2 on parsedcauses2.northstar_id = users.northstar_id
 where campaign_created_date >= current_date - INTERVAL '2 YEARS';
 
-
-Select campaign_name, signups.campaign_id, count(distinct id), date_trunc('year',signups.created_at) from signups
-         left outer join campaign_info on signups.campaign_id = cast(campaign_info.campaign_id as varchar)
-where campaign_info.campaign_id = 2427
-group by campaign_name, signups.campaign_id, date_trunc('year',signups.created_at)
-
-
-Select campaign_id, campaign_name, campaign_run_start_date, campaign_created_date from campaign_info
-
